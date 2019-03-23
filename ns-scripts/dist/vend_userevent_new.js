@@ -1,6 +1,47 @@
-'use strict';/**
+/**
  *@NApiVersion 2.x
  *@NScriptType UserEventScript
  *@NModuleScope SameAccount
  *Create product (NS->Vend->NS)
- */define(['N/record','N/search','N/https'],function(a,b,c){var d=function(a){e('Send body to api',a);var b=c.post({body:JSON.stringify(a),url:'https://rizer-redcpp.now.sh/nyscollection/inventory-adjustment',headers:{Accept:'application/json',"Content-Type":'application/json'}});return e('Api response',JSON.parse(b.body)),b},e=function(a,b){log.audit({title:a,details:b})};return{beforeSubmit:function b(a){if(a.type!==a.UserEventType.CREATE)return void e(a.type);try{e('Captured',a.newRecord);var c=extractProduct(a.newRecord);d(c)}catch(a){e('Error',a)}}}});
+ */
+
+define(['N/record', 'N/search', 'N/https'], (record, search, https) => {
+  const beforeSubmit = ctx => {
+    if (ctx.type !== ctx.UserEventType.CREATE) {
+      logGeneral(ctx.type);
+      return;
+    }
+    try {
+      logGeneral('Captured', ctx.newRecord);
+      const product = extractProduct(ctx.newRecord);
+      createProductVend(product);
+    } catch (err) {
+      logGeneral('Error', err);
+    }
+  };
+
+  const createProductVend = body => {
+    logGeneral('Send body to api', body);
+    const response = https.post({
+      body: JSON.stringify(body),
+      url: 'https://rizer-redcpp1.miguelcalev.now.sh /nyscollection/inventory-adjustment',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    logGeneral('Api response', JSON.parse(response.body));
+    return response;
+  };
+
+  const logGeneral = (title, msg) => {
+    log.audit({
+      title: title,
+      details: msg
+    });
+  };
+
+  return {
+    beforeSubmit: beforeSubmit
+  };
+});

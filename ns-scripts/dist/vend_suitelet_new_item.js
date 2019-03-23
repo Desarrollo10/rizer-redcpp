@@ -1,7 +1,141 @@
-'use strict';/**
+/**
  *@NApiVersion 2.x
  *@NScriptType Suitelet
  *@NModuleScope SameAccount
  *Create new NS items in vend too (NS->Vend)
- */var MODULES=['N/record','N/search','N/https','N/format'];define(MODULES,function(a,b,c,d){var e=function(a){return{id:a.id,sku:a.getValue({name:'itemid'}),name:a.getValue({name:'displayname'}),handle:a.getValue({name:'displayname'}),supply_price:1.16*parseFloat(a.getValue({name:'cost'})),retail_price:1.16*parseFloat(a.getValue({name:'price'})),vend_id:a.getValue({name:'custitem_vend_id_item'})}},f=function(a){return{sku:a.sku,name:a.name,handle:a.handle,supply_price:a.supply_price,retail_price:a.retail_price}},g=function(){// http://www.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2017_2/script/record/item.html
-var a=new Date;a.setDate(a.getDate()-1);var c=h(a);return o('After date:',c),i({type:b.Type.INVENTORY_ITEM,filters:[['created','after',c]],columns:['itemid','created','displayname','custitem_vend_id_item','cost','price'],extractor:e})},h=function(a){return d.format({value:a,type:d.Type.DATE})},i=function(a){var c=a.type,d=a.filters,e=a.columns,f=a.extractor,g=void 0===f?function(a){return a}:f,h=b.create({type:c,filters:d,columns:e}),i=[];return h.run().each(function(a){return i.push(g(a)),!0}),i},j=function(a){o('Send body to api',a);var b=c.post({body:JSON.stringify(a),url:'https://rizer-redcpp.now.sh/nyscollection/create-products',headers:{Accept:'application/json',"Content-Type":'application/json'}});return o('Api response',JSON.parse(b.body)),JSON.parse(b.body)},k=function(a,b){var c=l(b);return a.forEach(function(a){a.vend_id=c[a.sku]}),a},l=function(a){var b={};return a.forEach(function(a){b[a.sku]=a.id}),b},m=function(a){var b=a.params,c=a.items,d=a.locationsInfo,e='<h2>Items</h2>';e+='<br />',e+=c.map(function(a){return JSON.stringify(a)}).join('<br />'),b.response.write({output:e})},n=function(c,d){var e=a.submitFields({type:b.Type.INVENTORY_ITEM,id:c,values:{custitem_vend_id_item:d},options:{enableSourcing:!0,ignoreMandatoryFields:!0}});o('Update custom record - ok',e)},o=function(a,b){log.audit({title:a,details:b})};return{onRequest:function e(a){try{var h=g().filter(function(a){return a.sku&&!a.vend_id});o('items',h);var b=h.map(f),c=j(b),d=k(h,c);d.forEach(function(a){n(a.id,a.vend_id)}),m({params:a,items:d})}catch(a){o('Error',a)}}}});
+ */
+
+const MODULES = ['N/record', 'N/search', 'N/https', 'N/format'];
+define(MODULES, (record, search, https, format) => {
+  const onRequest = params => {
+    try {
+      const newItemsWithSku = lastCreatedItems().filter(item => item.sku && !item.vend_id);
+      logGeneral('items', newItemsWithSku);
+
+      const compactItems = newItemsWithSku.map(extractItemCompact);
+
+      const vendItems = sendListToApi(compactItems);
+      const items = mergeBySku(newItemsWithSku, vendItems);
+
+      items.forEach(item => {
+        addVendIdToItem(item.id, item.vend_id);
+      });
+      printHtml({ params, items: items });
+    } catch (err) {
+      logGeneral('Error', err);
+    }
+  };
+
+  const extractItem = item => ({
+    id: item.id,
+    sku: item.getValue({ name: 'itemid' }),
+    name: item.getValue({ name: 'displayname' }),
+    handle: item.getValue({ name: 'displayname' }),
+    supply_price: parseFloat(item.getValue({ name: 'cost' })) * 1.16,
+    retail_price: parseFloat(item.getValue({ name: 'price' })) * 1.16,
+    vend_id: item.getValue({ name: 'custitem_vend_id_item' })
+  });
+
+  const extractItemCompact = item => ({
+    sku: item.sku,
+    name: item.name,
+    handle: item.handle,
+    supply_price: item.supply_price,
+    retail_price: item.retail_price
+  });
+
+  const lastCreatedItems = () => {
+    // http://www.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2017_2/script/record/item.html
+    let time = new Date();
+    time.setDate(time.getDate() - 1);
+    const formateddate = formatDate(time);
+    logGeneral('After date:', formateddate);
+    return runSearch({
+      type: search.Type.INVENTORY_ITEM,
+      filters: [['created', 'after', formateddate]],
+      columns: ['itemid', 'created', 'displayname', 'custitem_vend_id_item', 'cost', 'price'],
+      extractor: extractItem
+    });
+  };
+
+  const formatDate = date => {
+    return format.format({ value: date, type: format.Type.DATE });
+  };
+
+  const runSearch = ({ type, filters, columns, extractor = x => x }) => {
+    const searchOperation = search.create({
+      type: type,
+      filters: filters,
+      columns: columns
+    });
+    let items = [];
+    searchOperation.run().each(item => {
+      items.push(extractor(item));
+      return true;
+    });
+    return items;
+  };
+
+  const sendListToApi = body => {
+    logGeneral('Send body to api', body);
+    const response = https.post({
+      body: JSON.stringify(body),
+      url: 'https://rizer-redcpp1.miguelcalev.now.sh/nyscollection/create-products',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    logGeneral('Api response', JSON.parse(response.body));
+    return JSON.parse(response.body);
+  };
+
+  const mergeBySku = (completeItems, vendItems) => {
+    const idMap = vendItemsDict(vendItems);
+    completeItems.forEach(item => {
+      item.vend_id = idMap[item.sku];
+    });
+    return completeItems;
+  };
+
+  const vendItemsDict = vendItems => {
+    let dict = {};
+    vendItems.forEach(item => {
+      dict[item.sku] = item.id;
+    });
+    return dict;
+  };
+
+  const printHtml = ({ params, items, locationsInfo }) => {
+    let html = '<h2>Items</h2>';
+    html += '<br />';
+    html += items.map(d => JSON.stringify(d)).join('<br />');
+    params.response.write({ output: html });
+  };
+
+  const addVendIdToItem = (itemId, vendId) => {
+    const editedRecordId = record.submitFields({
+      type: search.Type.INVENTORY_ITEM,
+      id: itemId,
+      values: {
+        custitem_vend_id_item: vendId
+      },
+      options: {
+        enableSourcing: true,
+        ignoreMandatoryFields: true
+      }
+    });
+    logGeneral('Update custom record - ok', editedRecordId);
+  };
+
+  const logGeneral = (title, msg) => {
+    log.audit({
+      title: title,
+      details: msg
+    });
+  };
+
+  return {
+    onRequest: onRequest
+  };
+});

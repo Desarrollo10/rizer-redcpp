@@ -2,6 +2,8 @@ const TAX_CODE_ID = '5';
 const CUSTOMER_ID = '670';
 const APPROVED = '2';
 
+
+
 define(['N/record'], (record) => {
   const _setInfo = (createdRecord, info) => {
     for (const field in info) {
@@ -16,7 +18,7 @@ define(['N/record'], (record) => {
   };
 
   const _addItem = (createdRecord, item) => {
-    createdRecord.selectNewLine({sublistId: 'item'});
+    createdRecord.selectNewLine({ sublistId: 'item' });
     for (const field in item) {
       if (item.hasOwnProperty(field)) {
         createdRecord.setCurrentSublistValue({
@@ -26,7 +28,7 @@ define(['N/record'], (record) => {
         });
       }
     }
-    createdRecord.commitLine({sublistId: 'item'});
+    createdRecord.commitLine({ sublistId: 'item' });
   };
 
   const _save = (createdRecord) => {
@@ -53,7 +55,7 @@ define(['N/record'], (record) => {
     };
   };
 
-  const invoiceFactory = ({form, subsidiary}) => {
+  const invoiceFactory = ({ form, subsidiary }) => {
     const defaultInfo = {
       custbody_efx_pos_origen: true,
       // approvalstatus: APPROVED,

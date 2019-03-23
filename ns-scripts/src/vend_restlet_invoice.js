@@ -18,14 +18,14 @@ define(MODULES, (record, error, file, search, utils) => {
       // Invoice
       const items = obtainProducts(jsonContents.payload.register_sale_products);
       if (items.length === 0) {
-        _errMissingData({items});
+        _errMissingData({ items });
       }
       const invoiceId = createInvoiceRecord(items, jsonContents.payload);
       const pid = createPaymentRecord(invoiceId, extractAmount(items));
 
       // Validate successfull creation
       if (!(invoiceId && pid)) {
-        _errMissingData({invoiceId, pid});
+        _errMissingData({ invoiceId, pid });
       }
 
       // Everything went all-right
@@ -92,7 +92,7 @@ define(MODULES, (record, error, file, search, utils) => {
 
   const extractItem = (product) => ({
     internal_id: product.id,
-    sku: product.getValue({name: 'itemid'}),
+    sku: product.getValue({ name: 'itemid' }),
   });
 
   /*
@@ -181,7 +181,7 @@ define(MODULES, (record, error, file, search, utils) => {
       const form = (payload.store === 'nyscollection' ? NYS_FORM : ACC_FORM);
       const subsidiary = (payload.store === 'nyscollection' ? NYS_SUBSIDIARY : ACC_SUBSIDIARY);
       // Use Factory
-      const creator = utils.invoiceFactory({form, subsidiary});
+      const creator = utils.invoiceFactory({ form, subsidiary });
       creator.setInfo({
         memo: vendId,
         location: findLocation(payload.outlet_name.toUpperCase()),
@@ -241,7 +241,7 @@ define(MODULES, (record, error, file, search, utils) => {
 
   const extractLocation = (location) => ({
     id: location.id,
-    name: location.getValue({name: 'name'}),
+    name: location.getValue({ name: 'name' }),
   });
 
   const extractAmount = (items) => {

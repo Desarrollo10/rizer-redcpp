@@ -1,3 +1,125 @@
-'use strict';var TAX_CODE_ID='5',CUSTOMER_ID='670',APPROVED='2';define(['N/record'],function(a){var b=function(a,b){for(var c in b)b.hasOwnProperty(c)&&a.setValue({fieldId:c,value:b[c],ignoreFieldChange:!0})},c=function(a,b){for(var c in a.selectNewLine({sublistId:'item'}),b)b.hasOwnProperty(c)&&a.setCurrentSublistValue({sublistId:'item',fieldId:c,value:b[c]});a.commitLine({sublistId:'item'})},d=function(a){return a.save({enableSourcing:!0,ignoreMandatoryFields:!0})},e=function(a,b){log.audit({title:a,details:b})};return{invoiceFactory:function l(f){var g=f.form,h=f.subsidiary,i={custbody_efx_pos_origen:!0// approvalstatus: APPROVED,
-},j={tax_code:TAX_CODE_ID},k=a.create({type:a.Type.INVOICE,isDynamic:!0,defaultValues:{customform:g,entity:CUSTOMER_ID,subsidiary:h}});return{setInfo:function d(a){var c=Object.assign({},i,a);e('Invoice factory - setInfo',JSON.stringify(c)),b(k,c)},addItem:function d(a){var b=Object.assign({},j,a);c(k,b)},save:function a(){return d(k)}}},customRecordFactory:function g(){var c={name:'error'},f=a.create({type:'customrecord_vend_custom_record'});return{setInfo:function g(a){var d=Object.assign({},c,a);e('Custom record factory - setInfoOf',d.name),b(f,d)},save:function a(){return d(f)}}}}}),'function'!=typeof Object.assign&&Object.defineProperty(Object,'assign',{value:function(a){'use strict';if(null==a)throw new TypeError('Cannot convert undefined or null to object');for(var b,c=Object(a),d=1;d<arguments.length;d++)// eslint-disable-line
-if(b=arguments[d],null!=b)for(var e in b)Object.prototype.hasOwnProperty.call(b,e)&&(c[e]=b[e]);return c},writable:!0,configurable:!0});
+const TAX_CODE_ID = '5';
+const CUSTOMER_ID = '670';
+const APPROVED = '2';
+
+define(['N/record'], record => {
+  const _setInfo = (createdRecord, info) => {
+    for (const field in info) {
+      if (info.hasOwnProperty(field)) {
+        createdRecord.setValue({
+          fieldId: field,
+          value: info[field],
+          ignoreFieldChange: true
+        });
+      }
+    }
+  };
+
+  const _addItem = (createdRecord, item) => {
+    createdRecord.selectNewLine({ sublistId: 'item' });
+    for (const field in item) {
+      if (item.hasOwnProperty(field)) {
+        createdRecord.setCurrentSublistValue({
+          sublistId: 'item',
+          fieldId: field,
+          value: item[field]
+        });
+      }
+    }
+    createdRecord.commitLine({ sublistId: 'item' });
+  };
+
+  const _save = createdRecord => {
+    return createdRecord.save({
+      enableSourcing: true,
+      ignoreMandatoryFields: true
+    });
+  };
+
+  const customRecordFactory = () => {
+    const defaultInfo = {
+      name: 'error'
+    };
+    const customRecord = record.create({
+      type: 'customrecord_vend_custom_record'
+    });
+    return {
+      setInfo: newInfo => {
+        const info = Object.assign({}, defaultInfo, newInfo);
+        logGeneral('Custom record factory - setInfoOf', info.name);
+        _setInfo(customRecord, info);
+      },
+      save: () => _save(customRecord)
+    };
+  };
+
+  const invoiceFactory = ({ form, subsidiary }) => {
+    const defaultInfo = {
+      custbody_efx_pos_origen: true
+      // approvalstatus: APPROVED,
+    };
+    const defaultItem = {
+      tax_code: TAX_CODE_ID
+    };
+    const invoice = record.create({
+      type: record.Type.INVOICE,
+      isDynamic: true,
+      defaultValues: {
+        customform: form,
+        entity: CUSTOMER_ID,
+        subsidiary: subsidiary
+      }
+    });
+    return {
+      setInfo: newInfo => {
+        const info = Object.assign({}, defaultInfo, newInfo);
+        logGeneral('Invoice factory - setInfo', JSON.stringify(info));
+        _setInfo(invoice, info);
+      },
+      addItem: newItem => {
+        const item = Object.assign({}, defaultItem, newItem);
+        _addItem(invoice, item);
+      },
+      save: () => _save(invoice)
+    };
+  };
+
+  const logGeneral = (title, msg) => {
+    log.audit({
+      title: title,
+      details: msg
+    });
+  };
+
+  return {
+    invoiceFactory: invoiceFactory,
+    customRecordFactory: customRecordFactory
+  };
+});
+
+if (typeof Object.assign != 'function') {
+  Object.defineProperty(Object, 'assign', {
+    value: function assign(target, constArgs) {
+      'use strict';
+
+      if (target == null) {
+        throw new TypeError('Cannot convert undefined or null to object');
+      }
+      const to = Object(target);
+      for (let index = 1; index < arguments.length; index++) {
+        // eslint-disable-line
+        const nextSource = arguments[index]; // eslint-disable-line
+        if (nextSource != null) {
+          for (const nextKey in nextSource) {
+            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
+          }
+        }
+      }
+      return to;
+    },
+    writable: true,
+    configurable: true
+  });
+}

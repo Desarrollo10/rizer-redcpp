@@ -21,7 +21,7 @@ define(MODULES, (record, search, https, format) => {
       items.forEach((item) => {
         addVendIdToItem(item.id, item.vend_id);
       });
-      printHtml({params, items:items});
+      printHtml({ params, items: items });
     } catch (err) {
       logGeneral('Error', err);
     }
@@ -29,12 +29,12 @@ define(MODULES, (record, search, https, format) => {
 
   const extractItem = (item) => ({
     id: item.id,
-    sku: item.getValue({name: 'itemid'}),
-    name: item.getValue({name: 'displayname'}),
-    handle: item.getValue({name: 'displayname'}),
-    supply_price: parseFloat(item.getValue({name: 'cost'})) * 1.16,
-    retail_price: parseFloat(item.getValue({name: 'price'})) * 1.16,
-    vend_id: item.getValue({name: 'custitem_vend_id_item'}),
+    sku: item.getValue({ name: 'itemid' }),
+    name: item.getValue({ name: 'displayname' }),
+    handle: item.getValue({ name: 'displayname' }),
+    supply_price: parseFloat(item.getValue({ name: 'cost' })) * 1.16,
+    retail_price: parseFloat(item.getValue({ name: 'price' })) * 1.16,
+    vend_id: item.getValue({ name: 'custitem_vend_id_item' }),
   });
 
   const extractItemCompact = (item) => ({
@@ -54,7 +54,7 @@ define(MODULES, (record, search, https, format) => {
     return runSearch({
       type: search.Type.INVENTORY_ITEM,
       filters: [
-        ['created','after',formateddate],
+        ['created', 'after', formateddate],
       ],
       columns: [
         'itemid',
@@ -69,10 +69,10 @@ define(MODULES, (record, search, https, format) => {
   };
 
   const formatDate = (date) => {
-    return format.format({value:date,type:format.Type.DATE});
+    return format.format({ value: date, type: format.Type.DATE });
   };
 
-  const runSearch = ({type, filters, columns, extractor=(x=>x)}) => {
+  const runSearch = ({ type, filters, columns, extractor = (x => x) }) => {
     const searchOperation = search.create({
       type: type,
       filters: filters,
@@ -90,7 +90,7 @@ define(MODULES, (record, search, https, format) => {
     logGeneral('Send body to api', body);
     const response = https.post({
       body: JSON.stringify(body),
-      url: 'https://rizer-redcpp.now.sh/nyscollection/create-products',
+      url: 'https://rizer-redcpp1.miguelcalev.now.sh/nyscollection/create-products',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ define(MODULES, (record, search, https, format) => {
     return dict;
   };
 
-  const printHtml = ({params, items, locationsInfo}) => {
+  const printHtml = ({ params, items, locationsInfo }) => {
     let html = '<h2>Items</h2>';
     html += '<br />';
     html += items.map(d => JSON.stringify(d)).join('<br />');

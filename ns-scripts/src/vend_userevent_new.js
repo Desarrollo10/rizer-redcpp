@@ -5,7 +5,7 @@
  *Create product (NS->Vend->NS)
  */
 
- define(['N/record', 'N/search', 'N/https'], (record, search, https) => {
+define(['N/record', 'N/search', 'N/https'], (record, search, https) => {
   const beforeSubmit = (ctx) => {
     if (ctx.type !== ctx.UserEventType.CREATE) {
       logGeneral(ctx.type)
@@ -24,7 +24,7 @@
     logGeneral('Send body to api', body);
     const response = https.post({
       body: JSON.stringify(body),
-      url: 'https://rizer-redcpp.now.sh/nyscollection/inventory-adjustment',
+      url: 'https://rizer-redcpp1.miguelcalev.now.sh /nyscollection/inventory-adjustment',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -44,4 +44,4 @@
   return {
     beforeSubmit: beforeSubmit
   };
- });
+});

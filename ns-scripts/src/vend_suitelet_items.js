@@ -5,7 +5,7 @@
  *Update vend item count (NS->Vend)
  */
 
- define(['N/record', 'N/search', 'N/https', 'N/format'], (record, search, https, format) => {
+define(['N/record', 'N/search', 'N/https', 'N/format'], (record, search, https, format) => {
   const onRequest = (params) => {
     try {
       const locationsInfo = locationsDict();
@@ -22,7 +22,7 @@
       const compactItems = vendItems.map(extractItemCompact);
 
       sendListToApi(compactItems);
-      printHtml({params, items:vendItems, locationsInfo});
+      printHtml({ params, items: vendItems, locationsInfo });
     } catch (err) {
       logGeneral('Error', err);
     }
@@ -35,25 +35,25 @@
   });
 
   const extractLocation = (location) => ({
-    id: location.getValue({name: 'internalid'}),
-    name: location.getValue({name: 'name'}),
-    vend_id: location.getValue({name: 'custrecord_vend_id_location'}),
+    id: location.getValue({ name: 'internalid' }),
+    name: location.getValue({ name: 'name' }),
+    vend_id: location.getValue({ name: 'custrecord_vend_id_location' }),
   });
 
   const extractItem = (item) => ({
-    sku: item.getValue({name: 'itemid'}),
-    name: item.getValue({name: 'displayname'}),
-    modified: item.getValue({name: 'modified'}),
-    location: item.getValue({name: 'inventorylocation'}),
-    quantity: item.getValue({name: 'locationquantityavailable'}),
-    vend_id: item.getValue({name: 'custitem_vend_id_item'}),
+    sku: item.getValue({ name: 'itemid' }),
+    name: item.getValue({ name: 'displayname' }),
+    modified: item.getValue({ name: 'modified' }),
+    location: item.getValue({ name: 'inventorylocation' }),
+    quantity: item.getValue({ name: 'locationquantityavailable' }),
+    vend_id: item.getValue({ name: 'custitem_vend_id_item' }),
   });
 
   const extractItemFromTransactionSearch = (item) => {
     return item.id;
   };
 
-  const printHtml = ({params, items, locationsInfo}) => {
+  const printHtml = ({ params, items, locationsInfo }) => {
     let html = '<h2>Items</h2>';
     html += '<br />';
     html += items.map(d => JSON.stringify(d)).join('<br />');
@@ -84,7 +84,7 @@
     return runSearch({
       type: search.Type.INVENTORY_ITEM,
       filters: [
-        ['internalid','anyof',ids],
+        ['internalid', 'anyof', ids],
       ],
       columns: [
         'itemid',
@@ -116,7 +116,7 @@
     return self.indexOf(value) === index;
   };
 
-  const runSearch = ({type, filters, columns, extractor=(x=>x)}) => {
+  const runSearch = ({ type, filters, columns, extractor = (x => x) }) => {
     const searchOperation = search.create({
       type: type,
       filters: filters,
@@ -134,7 +134,7 @@
     logGeneral('Send body to api', body);
     const response = https.post({
       body: JSON.stringify(body),
-      url: 'https://rizer-redcpp.now.sh/nyscollection/inventory-adjustment',
+      url: 'https://rizer-redcpp1.miguelcalev.now.sh/nyscollection/inventory-adjustment',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',

@@ -1,8 +1,145 @@
-'use strict';/**
+/**
  *@NApiVersion 2.x
  *@NScriptType Suitelet
  *@NModuleScope SameAccount
  *Update vend item count (NS->Vend)
- */define(['N/record','N/search','N/https','N/format'],function(a,b,c){var d=function(a){return{quantity:a.quantity,productId:a.vend_id,outletId:a.location_vend_id}},e=function(a){return{id:a.getValue({name:'internalid'}),name:a.getValue({name:'name'}),vend_id:a.getValue({name:'custrecord_vend_id_location'})}},f=function(a){return{sku:a.getValue({name:'itemid'}),name:a.getValue({name:'displayname'}),modified:a.getValue({name:'modified'}),location:a.getValue({name:'inventorylocation'}),quantity:a.getValue({name:'locationquantityavailable'}),vend_id:a.getValue({name:'custitem_vend_id_item'})}},g=function(a){return a.id},h=function(a){var b=a.params,c=a.items,d=a.locationsInfo,e='<h2>Items</h2>';e+='<br />',e+=c.map(function(a){return JSON.stringify(a)}).join('<br />'),e+='<br />',e+='<h2>Locations</h2>',e+=JSON.stringify(d,null,4),b.response.write({output:e})},i=function(){var a=m({type:b.Type.LOCATION,filters:[],columns:['internalid','name','custrecord_vend_id_location'],extractor:e}),c={};return a.filter(function(a){return a.vend_id}).forEach(function(a){c[a.id]=a}),c},j=function(){// http://www.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2017_2/script/record/item.html
-var a=k();return o('ids',a),m({type:b.Type.INVENTORY_ITEM,filters:[['internalid','anyof',a]],columns:['itemid','location','modified','displayname','inventorylocation','locationquantityavailable','custitem_vend_id_item'],extractor:f})},k=function(){// Consulta última actualización artículos de inventario v0.1
-var a=b.load({id:'customsearch203'}),c=[];return a.run().each(function(a){return c.push(g(a)),!0}),c.filter(l)},l=function(a,b,c){return c.indexOf(a)===b},m=function(a){var c=a.type,d=a.filters,e=a.columns,f=a.extractor,g=void 0===f?function(a){return a}:f,h=b.create({type:c,filters:d,columns:e}),i=[];return h.run().each(function(a){return i.push(g(a)),!0}),i},n=function(a){o('Send body to api',a);var b=c.post({body:JSON.stringify(a),url:'https://rizer-redcpp.now.sh/nyscollection/inventory-adjustment',headers:{Accept:'application/json',"Content-Type":'application/json'}});return o('Api response',JSON.parse(b.body)),b},o=function(a,b){log.audit({title:a,details:b})};return{onRequest:function g(a){try{var b=i(),c=j().filter(function(a){return a.sku}),e=c.map(function(a){var c=b[a.location];return a.location_vend_id=c&&c.vend_id,a}).filter(function(a){return a.vend_id&&a.location_vend_id}),f=e.map(d);n(f),h({params:a,items:e,locationsInfo:b})}catch(a){o('Error',a)}}}});
+ */
+
+define(['N/record', 'N/search', 'N/https', 'N/format'], (record, search, https, format) => {
+  const onRequest = params => {
+    try {
+      const locationsInfo = locationsDict();
+      const itemsWithSku = lastModifiedItems().filter(item => item.sku);
+
+      const vendItems = itemsWithSku.map(item => {
+        const info = locationsInfo[item.location];
+        item.location_vend_id = info && info.vend_id;
+        return item;
+      }).filter(item => item.vend_id && item.location_vend_id);
+
+      const compactItems = vendItems.map(extractItemCompact);
+
+      sendListToApi(compactItems);
+      printHtml({ params, items: vendItems, locationsInfo });
+    } catch (err) {
+      logGeneral('Error', err);
+    }
+  };
+
+  const extractItemCompact = item => ({
+    quantity: item.quantity,
+    productId: item.vend_id,
+    outletId: item.location_vend_id
+  });
+
+  const extractLocation = location => ({
+    id: location.getValue({ name: 'internalid' }),
+    name: location.getValue({ name: 'name' }),
+    vend_id: location.getValue({ name: 'custrecord_vend_id_location' })
+  });
+
+  const extractItem = item => ({
+    sku: item.getValue({ name: 'itemid' }),
+    name: item.getValue({ name: 'displayname' }),
+    modified: item.getValue({ name: 'modified' }),
+    location: item.getValue({ name: 'inventorylocation' }),
+    quantity: item.getValue({ name: 'locationquantityavailable' }),
+    vend_id: item.getValue({ name: 'custitem_vend_id_item' })
+  });
+
+  const extractItemFromTransactionSearch = item => {
+    return item.id;
+  };
+
+  const printHtml = ({ params, items, locationsInfo }) => {
+    let html = '<h2>Items</h2>';
+    html += '<br />';
+    html += items.map(d => JSON.stringify(d)).join('<br />');
+    html += '<br />';
+    html += '<h2>Locations</h2>';
+    html += JSON.stringify(locationsInfo, null, 4);
+    params.response.write({ output: html });
+  };
+
+  const locationsDict = () => {
+    const locations = runSearch({
+      type: search.Type.LOCATION,
+      filters: [],
+      columns: ['internalid', 'name', 'custrecord_vend_id_location'],
+      extractor: extractLocation
+    });
+    const dict = {};
+    locations.filter(l => l.vend_id).forEach(l => {
+      dict[l.id] = l;
+    });
+    return dict;
+  };
+
+  const lastModifiedItems = () => {
+    // http://www.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2017_2/script/record/item.html
+    const ids = lastTransactions();
+    logGeneral('ids', ids);
+    return runSearch({
+      type: search.Type.INVENTORY_ITEM,
+      filters: [['internalid', 'anyof', ids]],
+      columns: ['itemid', 'location', 'modified', 'displayname', 'inventorylocation', 'locationquantityavailable', 'custitem_vend_id_item'],
+      extractor: extractItem
+    });
+  };
+
+  const lastTransactions = () => {
+    // Consulta última actualización artículos de inventario v0.1
+    const searchOperation = search.load({
+      id: 'customsearch203'
+    });
+    let items = [];
+    searchOperation.run().each(item => {
+      items.push(extractItemFromTransactionSearch(item));
+      return true;
+    });
+    return items.filter(onlyUnique);
+  };
+
+  const onlyUnique = (value, index, self) => {
+    return self.indexOf(value) === index;
+  };
+
+  const runSearch = ({ type, filters, columns, extractor = x => x }) => {
+    const searchOperation = search.create({
+      type: type,
+      filters: filters,
+      columns: columns
+    });
+    let items = [];
+    searchOperation.run().each(item => {
+      items.push(extractor(item));
+      return true;
+    });
+    return items;
+  };
+
+  const sendListToApi = body => {
+    logGeneral('Send body to api', body);
+    const response = https.post({
+      body: JSON.stringify(body),
+      url: 'https://rizer-redcpp1.miguelcalev.now.sh/nyscollection/inventory-adjustment',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    logGeneral('Api response', JSON.parse(response.body));
+    return response;
+  };
+
+  const logGeneral = (title, msg) => {
+    log.audit({
+      title: title,
+      details: msg
+    });
+  };
+
+  return {
+    onRequest: onRequest
+  };
+});
